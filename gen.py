@@ -33,7 +33,7 @@ def rrr_xlsx_csv():
     b = excel_read('rrr.xlsx')
     c = []
     for i in range(len(b)):
-        if i > 0:
+        if i > 1:
             a = b[i]
             t = []
             t.append(getdate(a[0]).strftime("%Y-%m-%d"))
@@ -45,7 +45,7 @@ def rrr_xlsx_csv():
             t.append(a[6])
             t.append(a[7])
             c.append(t)
-    c.sort(key=lambda entry: entry[0], reverse=False)
+    c.sort(key=lambda entry: entry[0] + entry[1], reverse=False)
     d = []
     for i in range(len(c)):
         d.append(','.join(a if isinstance(a, str) else str(a) for a in c[i]))
