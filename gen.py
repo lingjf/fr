@@ -106,59 +106,66 @@ def rrr():
     rrr_xlsx_csv()
     rrr_csv_json()
 
+
+def to_json(d, e, json_file_name):
+    c = json_read(json_file_name)
+    year = int(d["Item"][0])
+    for i in range(12):
+        date = str(year) + '-' + '{:02}'.format(i + 1)
+        if isinstance(d[e][i], str):
+            break
+        t = {}
+        t["月份"] = date
+        for a in d:
+            if a != "Item":
+                t[a] = 0 if isinstance(d[a][i], str) else float(d[a][i])
+        for j in range(len(c)):
+            if c[j]["月份"] == date:
+                c[j] = t
+                break 
+        else:
+            c.append(t)
+    c.sort(key=lambda entry: entry["月份"], reverse=False)
+    json_write(json_file_name, c)
+
+def to_csv(d, e, cols, csv_file_name):
+    c = csv_read(csv_file_name)
+    year = int(d["Item"][0])
+    for i in range(12):
+        date = str(year) + '-' + '{:02}'.format(i + 1)
+        if isinstance(d[e][i], str):
+            break
+        t = [ date ]
+        for a in cols:
+            t.append(int(fetch_safe(d, a, i)))
+        for j in range(len(c)):
+            if c[j][0] == date:
+                c[j] = t
+                break 
+        else:
+            c.append(t)
+    c.sort(key=lambda entry: entry[0], reverse=False)
+    csv_write(csv_file_name, c)
+
 def mmm_xlsx(filename):
     b = excel_read(filename)
-    d, m0, m1, m2 = [], [], [], []
+    d = {"Item": [], "M0": [], "M1": [], "M2": []}
     for i, a in enumerate(b):
         if '项目 Item' in a[0]:
-            d = a[3:]
-        if '流通中货币（M0）' in a[2]:
-            m0 = a[3:]
-        if '货币（M1）' in a[1]:
-            m1 = a[3:]
-        if '货币和准货币（M2）' in a[0]:
-            m2 = a[3:]
-    n = 0
-    for i in range(12):
-        if isinstance(m0[i], str) or isinstance(m1[i], str) or isinstance(m2[i], str):
-            break
-        n = i + 1
-    return d[:n], m0[:n], m1[:n], m2[:n]
-
-def mmm_csv(d, m0, m1, m2):
-    c = csv_read('mmm.csv')
-    year = int(d[0])
-    for i in range(len(d)):
-        date = str(year) + '-' + '{:02}'.format(i + 1)
-        for a in c:
-            if a[0] == date:
-                break
-        else:
-            c.append([date, int(m0[i]), int(m1[i]), int(m2[i])])
-    c.sort(key=lambda entry: entry[0], reverse=False)
-    csv_write('mmm.csv', c)
-
-def mmm_json():
-    c = csv_read('mmm.csv')
-    d = []
-    for i in range(len(c)):
-        a = c[i]
-        t = [
-            '"月份":"{}"'.format(a[0]),
-            '"M0":{}'.format(a[1]),
-            '"M1":{}'.format(a[2]),
-            '"M2":{}'.format(a[3]),
-        ]
-        d.append('   {' + ','.join(t) + '}')
-    # d.sort(key=lambda entry: entry["月份"], reverse=False)
-    with open('mmm.json', 'w') as f:
-        f.write('[\n' + ',\n'.join(d) + '\n]')
+            d["Item"] = a[3:]
+        elif '流通中货币（M0）' in a[2]:
+            d["M0"] = a[3:]
+        elif '货币（M1）' in a[1]:
+            d["M1"] = a[3:]
+        elif '货币和准货币（M2）' in a[0]:
+            d["M2"] = a[3:]
+    print(d)
+    return d
 
 def mmm(filename):
-    d, m0, m1, m2 = mmm_xlsx(filename)
-    if len(d) > 0:
-        mmm_csv(d, m0, m1, m2)
-    mmm_json()
+    d = mmm_xlsx(filename)
+    to_csv(d, 'M2', ['M0', 'M1', 'M2'], 'mmm.csv')
+    to_json(d, 'M2', 'mmm.json')
 
 
 def has_it(d, s):
@@ -431,9 +438,11 @@ def detect(filename):
     if '货币供应量' == a:
         mmm(filename)
     if '货币当局资产负债表' == a:
-        balance1(filename)
+        # balance1(filename)
+        pass
     if '其他存款性公司资产负债表' == a:
-        balance2(filename)
+        # balance2(filename)
+        pass
 
 
 def seek(path):
@@ -443,5 +452,5 @@ def seek(path):
             detect(os.path.join(path, file))
 
 seek('./res')
-rrr()
+# rrr()
 
