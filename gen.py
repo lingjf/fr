@@ -159,7 +159,6 @@ def mmm_xlsx(filename):
             d["M1"] = a[3:]
         elif '货币和准货币（M2）' in a[0]:
             d["M2"] = a[3:]
-    print(d)
     return d
 
 def mmm(filename):
@@ -169,11 +168,19 @@ def mmm(filename):
 
 
 def has_it(d, s):
-    dd = d.upper().replace(' ', '').replace(' ', '')
-    ss = s.upper().replace(' ', '').replace(' ', '')
-    if ss in dd:
-        return True
-    return False
+    dd = d.upper().replace(' ', ' ').replace('\u3000', ' ')
+    ss = s.upper().replace(' ', ' ').replace('\u3000', ' ')
+    d1 = dd.split(' ')
+    s1 = ss.split(' ')
+    for a in s1:
+        if a not in d1:
+            return False
+    d2 = dd.replace(' ', '')
+    s2 = ss.replace(' ', '')
+    if s2 not in d2:
+        return False
+    return True
+
 
 def balance1_xlsx(filename):
     b = excel_read(filename)
@@ -207,11 +214,11 @@ def balance1_xlsx(filename):
             d["储备货币"] = a[1:]
         elif has_it(a[0], '货币发行'):
             d["货币发行"] = a[1:]
-        elif has_it(a[0], '金融机构存款 Deposits of Financial Corporations') or has_it(a[0], '金融性公司存款 Deposits of Financial Corporations'):
+        elif has_it(a[0], '金融性公司存款 Deposits of Financial Corporations') or has_it(a[0], '金融机构存款 Deposits of Financial Corporations'):
             d["金融性公司存款"] = a[1:]
-        elif has_it(a[0], '其他存款性公司存款'):
+        elif has_it(a[0], '其他存款性公司存款'): # 包含于 金融性公司存款
             d["其他存款性公司存款"] = a[1:]
-        elif has_it(a[0], '其他金融性公司存款') or has_it(a[0], '其他金融机构'):
+        elif has_it(a[0], '其他金融性公司存款') or has_it(a[0], '其他金融机构'): # 包含于 金融性公司存款
             d["其他金融性公司存款"] = a[1:]
         elif  has_it(a[0], '非金融机构存款') or has_it(a[0], '非金融性公司存款'):
             d["非金融机构存款"] = a[1:]
@@ -233,75 +240,13 @@ def balance1_xlsx(filename):
             print(a[0])
     return d
 
-def balance1_csv(d):
-    c = csv_read('balance1.csv')
-    year = int(d["Item"][0])
-    for i in range(12):
-        date = str(year) + '-' + '{:02}'.format(i + 1)
-        if isinstance(d["总资产"][i], str) or isinstance(d["总负债"][i], str):
-            break
-        for a in c:
-            if a[0] == date:
-                break
-        else:
-            r = [
-                date,
-                int(fetch_safe(d, "国外资产", i)),
-                int(fetch_safe(d, "外汇", i)),
-                int(fetch_safe(d, "货币黄金", i)),
-                int(fetch_safe(d, "其他国外资产", i)),
-                int(fetch_safe(d, "对政府债权", i)),
-                int(fetch_safe(d, "中央政府", i)),
-                int(fetch_safe(d, "对其他存款性公司债权", i)),
-                int(fetch_safe(d, "对其他金融性公司债权", i)),
-                int(fetch_safe(d, "对非金融性部门债权", i)),
-                int(fetch_safe(d, "其他资产", i)),
-                int(fetch_safe(d, "总资产", i)),
-                int(fetch_safe(d, "储备货币", i)),
-                int(fetch_safe(d, "货币发行", i)),
-                int(fetch_safe(d, "金融性公司存款", i)),
-                int(fetch_safe(d, "其他存款性公司存款", i)),
-                int(fetch_safe(d, "其他金融性公司存款", i)),
-                int(fetch_safe(d, "非金融机构存款", i)),
-                int(fetch_safe(d, "不计入储备货币的金融性公司存款", i)),
-                int(fetch_safe(d, "发行债券", i)),
-                int(fetch_safe(d, "国外负债", i)),
-                int(fetch_safe(d, "政府存款", i)),
-                int(fetch_safe(d, "自有资金", i)),
-                int(fetch_safe(d, "其他负债", i)),
-                int(fetch_safe(d, "总负债", i)),
-            ]
-            c.append(r)
-    c.sort(key=lambda entry: entry[0], reverse=False)
-    csv_write('balance1.csv', c)
-
-def balance_json(d, json_file_name):
-    c = json_read(json_file_name)
-    year = int(d["Item"][0])
-    for i in range(12):
-        date = str(year) + '-' + '{:02}'.format(i + 1)
-        if isinstance(d["总资产"][i], str) or isinstance(d["总负债"][i], str):
-            break
-        for a in c:
-            if a["月份"] == date:
-                break
-        else:
-            t = {}
-            t["月份"] = date
-            for b in d:
-                if b != "Item":
-                    t[b] = 0 if isinstance(d[b][i], str) else float(d[b][i])
-            c.append(t)
-    c.sort(key=lambda entry: entry["月份"], reverse=False)
-    json_write(json_file_name, c)
-
 def balance1(filename):
     print('货币当局资产负债表 ' + filename)
     d = balance1_xlsx(filename)
     if len(d) > 0:
-        balance1_csv(d)
-        balance_json(d, 'balance1.json')
-
+        t = ["国外资产", "外汇", "货币黄金", "其他国外资产", "对政府债权", "中央政府", "对其他存款性公司债权", "对其他金融性公司债权", "对非金融性部门债权", "其他资产", "总资产", "储备货币", "货币发行", "金融性公司存款", "其他存款性公司存款", "其他金融性公司存款", "非金融机构存款", "不计入储备货币的金融性公司存款", "发行债券", "国外负债", "政府存款", "自有资金", "其他负债", "总负债"]
+        to_csv(d, '总资产', t, 'balance1.csv')
+        to_json(d, '总资产', 'balance1.json')
 
 def balance2_xlsx(filename):
     b = excel_read(filename)
@@ -360,7 +305,7 @@ def balance2_xlsx(filename):
         elif has_it(a[0], '对其他金融性公司负债'):
             d["对其他金融性公司负债"] = a[1:]
         elif has_it(a[0], '其中：计入广义货币的存款'):
-            d["其中：计入广义货币的存款"] = a[1:]
+            d["计入广义货币的存款"] = a[1:]
         elif has_it(a[0], '国外负债 Foreign Liabilities'):
             d["国外负债"] = a[1:]
         elif has_it(a[0], '债券发行 Bond Issue'):
@@ -375,61 +320,13 @@ def balance2_xlsx(filename):
             print(a[0])
     return d
 
-
-def balance2_csv(d):
-    c = csv_read('balance2.csv')
-    year = int(d["Item"][0])
-    for i in range(12):
-        date = str(year) + '-' + '{:02}'.format(i + 1)
-        if isinstance(d["总资产"], str) or isinstance(d["总负债"], str):
-            break
-        for a in c:
-            if a[0] == date:
-                break
-        else:
-            r = [
-                date,
-                int(fetch_safe(d, "国外资产", i)),
-                int(fetch_safe(d, "储备资产", i)),
-                int(fetch_safe(d, "准备金存款", i)),
-                int(fetch_safe(d, "库存现金", i)),
-                int(fetch_safe(d, "对政府债权", i)),
-                int(fetch_safe(d, "对中央政府债权", i)),
-                int(fetch_safe(d, "对中央银行债权", i)),
-                int(fetch_safe(d, "对其他存款性公司债权", i)),
-                int(fetch_safe(d, "对其他金融机构债权", i)),
-                int(fetch_safe(d, "对非金融机构债权", i)),
-                int(fetch_safe(d, "对其他居民部门债权", i)),
-                int(fetch_safe(d, "其他资产", i)),
-                int(fetch_safe(d, "总资产", i)),
-                int(fetch_safe(d, "对非金融机构及住户负债", i)),
-                int(fetch_safe(d, "纳入广义货币的存款", i)),
-                int(fetch_safe(d, "单位活期存款", i)),
-                int(fetch_safe(d, "单位定期存款", i)),
-                int(fetch_safe(d, "个人存款", i)),
-                int(fetch_safe(d, "不纳入广义货币的存款", i)),
-                int(fetch_safe(d, "可转让存款", i)),
-                int(fetch_safe(d, "其他存款", i)),
-                int(fetch_safe(d, "其他负债", i)),
-                int(fetch_safe(d, "对中央银行负债", i)),
-                int(fetch_safe(d, "对其他存款性公司负债", i)),
-                int(fetch_safe(d, "对其他金融性公司负债", i)),
-                int(fetch_safe(d, "其中：计入广义货币的存款", i)),
-                int(fetch_safe(d, "国外负债", i)),
-                int(fetch_safe(d, "债券发行", i)),
-                int(fetch_safe(d, "实收资本", i)),
-                int(fetch_safe(d, "其他负债", i)),
-                int(fetch_safe(d, "总负债", i)),
-            ]
-            c.append(r)
-    csv_write('balance2.csv', c)
-
 def balance2(filename):
     print('其他存款性公司资产负债表 ' + filename)
     d = balance2_xlsx(filename)
     if len(d) > 0:
-        balance2_csv(d)
-        balance_json(d, "balance2.json")
+        t = ["国外资产", "储备资产", "准备金存款", "库存现金", "对政府债权", "对中央政府债权", "对中央银行债权", "对其他存款性公司债权", "对其他金融机构债权", "对非金融机构债权", "对其他居民部门债权", "其他资产", "总资产", "对非金融机构及住户负债", "纳入广义货币的存款", "单位活期存款", "单位定期存款", "个人存款", "不纳入广义货币的存款", "可转让存款", "其他存款", "其他负债存款", "对中央银行负债", "对其他存款性公司负债", "对其他金融性公司负债", "计入广义货币的存款", "国外负债", "债券发行", "实收资本", "其他负债", "总负债"]
+        to_csv(d, '总资产', t, 'balance2.csv')
+        to_json(d, '总资产', 'balance2.json')
 
 def detect(filename):
     file = xlrd.open_workbook(filename)
@@ -438,11 +335,9 @@ def detect(filename):
     if '货币供应量' == a:
         mmm(filename)
     if '货币当局资产负债表' == a:
-        # balance1(filename)
-        pass
+        balance1(filename)
     if '其他存款性公司资产负债表' == a:
-        # balance2(filename)
-        pass
+        balance2(filename)
 
 
 def seek(path):
@@ -452,5 +347,5 @@ def seek(path):
             detect(os.path.join(path, file))
 
 seek('./res')
-# rrr()
+rrr()
 
