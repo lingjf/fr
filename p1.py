@@ -1,54 +1,55 @@
-
-import json
-from matplotlib import pyplot as plt
 from pyecharts import options as opts
 from pyecharts.charts import Line, Pie, Grid, Timeline
 
+import json
 
 with open('mmm.json', 'r') as f:
     mmm = json.load(f)
+with open('balance1.json', 'r') as f:
+    balance1 = json.load(f)
+with open('balance2.json', 'r') as f:
+    balance2 = json.load(f)
 
-month = list(map(lambda a: a["月份"], mmm))
-m0 = list(map(lambda a: a["M0"]/10000, mmm))
-m1 = list(map(lambda a: a["M1"]/10000, mmm))
-m2 = list(map(lambda a: a["M2"]/10000, mmm))
+M = list(filter(lambda a: a["月份"] > '2006-00', mmm))
+B1 = list(filter(lambda a: a["月份"] > '2006-00', balance1))
+B2 = list(filter(lambda a: a["月份"] > '2006-00', balance2))
 
-def old():
-    plt.rcParams['font.sans-serif'] = ['Arial Unicode MS']
-    plt.rcParams['axes.unicode_minus'] = False
+def DrawLine(Months, Values):
+    line = Line({"width": "1200px", "height": "720px"})
+    line.add_xaxis(xaxis_data=Months)
+    for v in Values:
+        line.add_yaxis(series_name=v,y_axis=Values[v],label_opts=opts.LabelOpts(is_show=False))
+    line.set_global_opts(
+            xaxis_opts=opts.AxisOpts(name="月份", 
+                                    axislabel_opts=opts.LabelOpts(rotate=-15),
+                                    axistick_opts=opts.AxisTickOpts(is_align_with_label=True),),
+            yaxis_opts=opts.AxisOpts(name="万亿", 
+                                    splitline_opts=opts.SplitLineOpts(is_show=True),
+                                    axistick_opts=opts.AxisTickOpts(is_show=True)),
+            tooltip_opts=opts.TooltipOpts(trigger="axis", axis_pointer_type="cross"),
+            title_opts=opts.TitleOpts(title="货币供应量", subtitle=""),
+            legend_opts=opts.LegendOpts(pos_left="left", orient="vertical", padding=180),
+        )
 
-    plt.title('货币供应量')
-    plt.Figure(figsize=(8, 4))
-    plt.plot(month,m0,label='M0')
-    plt.plot(month,m1,label='M1')
-    plt.plot(month,m2,label='M2')
+    line.render('货币供应量.html')
 
-    plt.legend(loc='upper left')
-    plt.xlabel('月份')
-    plt.ylabel('万亿元')
+Months = list(map(lambda a: a["月份"], M))
+M0 = list(map(lambda a: a["M0"], M))
+M1 = list(map(lambda a: a["M1"], M))
+M2 = list(map(lambda a: a["M2"], M))
 
-    # plt.gca().yaxis.tick_right()
-    # plt.gca().yaxis.set_label_position("right")
-    plt.gca().yaxis.get_major_formatter().set_scientific(False)
-    plt.gca().yaxis.get_major_formatter().set_useOffset(False)
-    plt.gca().xaxis.set_major_locator(plt.LinearLocator(numticks=10))
-    plt.show()
+Z = list(zip(M, B1, B2))
 
+m0 = list(map(lambda a: a[1]["货币发行"] - a[2]["库存现金"], Z))
+m1 = list(map(lambda a: a[1]["货币发行"] - a[2]["库存现金"]
+                        + a[2]["单位活期存款"], Z))
+m2 = list(map(lambda a: a[1]["货币发行"] - a[2]["库存现金"]
+                        + a[2]["单位活期存款"]
+                        + a[2]["单位定期存款"] + a[2]["个人存款"] + a[2]["计入广义货币的存款"], Z))
 
-line = Line()
-line.add_xaxis(xaxis_data=month)
-line.add_yaxis(series_name="M0",y_axis=m0,label_opts=opts.LabelOpts(is_show=False),areastyle_opts=opts.AreaStyleOpts(opacity=0.5),)
-line.add_yaxis(series_name="M1",y_axis=m1,label_opts=opts.LabelOpts(is_show=False),areastyle_opts=opts.AreaStyleOpts(opacity=0.5),)
-line.add_yaxis(series_name="M2",y_axis=m2,label_opts=opts.LabelOpts(is_show=False),areastyle_opts=opts.AreaStyleOpts(opacity=0.5),)
-line.set_global_opts(
-        xaxis_opts=opts.AxisOpts(name="月份", 
-                                 axislabel_opts=opts.LabelOpts(rotate=-15),
-                                 axistick_opts=opts.AxisTickOpts(is_align_with_label=True),),
-        yaxis_opts=opts.AxisOpts(name="万亿", 
-                                 splitline_opts=opts.SplitLineOpts(is_show=True),
-                                 axistick_opts=opts.AxisTickOpts(is_show=True)),
-        tooltip_opts=opts.TooltipOpts(trigger="none", axis_pointer_type="cross"),
-        title_opts=opts.TitleOpts(title="货币供应量", subtitle=""),
-    )
-
-line.render('货币供应量.html')
+DrawLine(Months, {
+        "公布M2": [a/10000 for a in M2], "计算m2": [a/10000 for a in m2],
+        "公布M1": [a/10000 for a in M1], "计算m1": [a/10000 for a in m1],
+        "公布M0": [a/10000 for a in M0], "计算m0": [a/10000 for a in m0],
+    }
+)
